@@ -66,9 +66,9 @@ From the endpoint you get out of deploying the stack:
 ## Future plans
 
 - More (and more interesting) policies
-  - max spend in X hours/days/weeks
-  - auto-deny list, auto-approve list (blacklist and whitelist)
-- Encrypt private keys (either credstash-style with KMS wrapping, or possible just SSE in s3, unclear)
+    - max spend in X hours/days/weeks
+    - auto-deny list, auto-approve list (blacklist and whitelist)
+- Encrypt private keys (either credstash-style with KMS wrapping, or possibly just SSE in s3, unclear)
 - MFA (or some other mechanism) to override denials
 - Some easy-to-get-too mechanism to trigger the Andon Cord policy (send a text to a phone number, button on a website,
   iot button, etc)

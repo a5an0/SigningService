@@ -12,7 +12,7 @@ use bdk::descriptor::Segwitv0;
 use bdk::keys::{DerivableKey, DescriptorKey, ExtendedKey};
 use bdk::keys::bip39::Mnemonic;
 use bdk::keys::DescriptorKey::Secret;
-use bdk::wallet::AddressIndex;
+use bdk::wallet::{AddressIndex, wallet_name_from_descriptor};
 use bdk::wallet::export::WalletExport;
 use lambda_http::{Body, handler, Request, RequestExt, Response, StrMap};
 use lambda_http::Body::Text;
@@ -22,7 +22,7 @@ use log::{debug, error, info};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::policy::PolicySet;
+use crate::policy::{get_policy_config_from_ddb, PolicySet};
 
 mod policy;
 
@@ -149,7 +149,10 @@ async fn sign_psbt(req: Request, bucket: &String, config: &Config, path_params: 
         }
     })?;
 
-    let policies = PolicySet::new(&wallet);
+    let secp = Secp256k1::new();
+    // let wallet_name = wallet_name_from_descriptor(&import.descriptor(), *&import.change_descriptor().as_ref(), Network::Bitcoin, &secp).unwrap();
+    let policy_config = get_policy_config_from_ddb(&config, &key_name).await?;
+    let policies = PolicySet::new(&wallet, &policy_config);
     return match policies.check_policies(&psbt) {
         Ok(_) => {
             info!("Passed value policy check");

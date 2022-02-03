@@ -1,6 +1,8 @@
 import {Stack, StackProps} from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as ddb from "aws-cdk-lib/aws-dynamodb";
+import {AttributeType, BillingMode, TableEncryption} from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from "aws-cdk-lib/aws-s3";
@@ -13,16 +15,26 @@ export class SigningServiceInfraStack extends Stack {
 
     const bucket = new s3.Bucket(this, "signing_bot");
 
+    const policyConfigTable = new ddb.Table(this, "PolicyConfigTable", {
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      encryption: TableEncryption.DEFAULT,
+      partitionKey: {name: "wallet_name", type: AttributeType.STRING},
+    });
+
     const handler = new lambda.Function(this, "SignerBackend", {
       runtime: lambda.Runtime.PROVIDED_AL2,
       code: lambda.Code.fromAsset('resources/lambda/'),
       handler: 'not.required',
       environment: {
-        BUCKET: bucket.bucketName
+        BUCKET: bucket.bucketName,
+        POLICY_CONFIG: policyConfigTable.tableName,
+        RUST_LOG: "info",
       }
     });
 
     bucket.grantReadWrite(handler);
+    policyConfigTable.grantReadData(handler);
+
 
     const lambdaKmsPolicyStmt = new iam.PolicyStatement({
       actions: ['kms:GenerateRandom'],

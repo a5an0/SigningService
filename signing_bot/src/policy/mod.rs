@@ -1,9 +1,12 @@
-use bdk::{KeychainKind, Wallet};
-use bdk::bitcoin::Network;
-use bdk::bitcoin::secp256k1::Secp256k1;
+use std::env;
+use std::str::FromStr;
+
+use aws_config::Config;
+use aws_sdk_dynamodb::model::AttributeValue;
 use bdk::bitcoin::util::psbt::PartiallySignedTransaction;
 use bdk::database::BatchDatabase;
-use bdk::wallet::wallet_name_from_descriptor;
+use bdk::Wallet;
+use log::{debug, info};
 
 use crate::policy::andonpolicy::AndonPolicy;
 use crate::policy::valuepolicy::ValuePolicy;
@@ -11,7 +14,8 @@ use crate::policy::valuepolicy::ValuePolicy;
 mod andonpolicy;
 mod valuepolicy;
 
-pub(crate) struct PolicyConfig {
+#[derive(Debug)]
+pub struct PolicyConfig {
     wallet_name: String,
     max_spend_per_tx: u64,
     all_tx_halted: bool,
@@ -26,17 +30,8 @@ pub struct PolicySet<'a> {
 }
 
 impl<'a> PolicySet<'a> {
-    pub fn new<B, D>(wallet: &'a Wallet<B, D>) -> Self
+    pub fn new<B, D>(wallet: &'a Wallet<B, D>, policy_config: &PolicyConfig) -> Self
         where D: BatchDatabase {
-        // TODO: read this out of DDB
-        let policy_config = PolicyConfig {
-            wallet_name: wallet_name_from_descriptor(wallet.get_descriptor_for_keychain(KeychainKind::External).to_owned(),
-                                                     Option::from(wallet.get_descriptor_for_keychain(KeychainKind::Internal).to_owned()),
-                                                     Network::Bitcoin, &Secp256k1::gen_new()).unwrap(),
-            max_spend_per_tx: 500_000,
-            all_tx_halted: false,
-        };
-        println!("constructed config for wallet named: {}", &policy_config.wallet_name);
         let mut v: Vec<Box<dyn Policy + 'a>> = Vec::new();
         v.push(Box::new(ValuePolicy::new(&policy_config, wallet)));
         v.push(Box::new(AndonPolicy::new(&policy_config)));
@@ -57,4 +52,24 @@ impl<'a> PolicySet<'a> {
             return Err(errors)
         }
     }
+}
+
+pub async fn get_policy_config_from_ddb(aws_config: &Config, wallet_name: &str) -> Result<PolicyConfig, aws_sdk_dynamodb::Error> {
+    let table_name = env::var("POLICY_CONFIG").unwrap();
+    let ddb_client = aws_sdk_dynamodb::Client::new(aws_config);
+    let gio = ddb_client.get_item()
+        .table_name(table_name)
+        .key("wallet_name", AttributeValue::S(wallet_name.to_string()))
+        .send()
+        .await?;
+    let item = gio.item().unwrap();
+
+
+    let config = PolicyConfig {
+        wallet_name: wallet_name.to_string(),
+        max_spend_per_tx: u64::from_str(item.get("max_spend_per_tx").unwrap_or(&AttributeValue::N("500000".to_string())).as_n().unwrap()).unwrap(),
+        all_tx_halted: *item.get("all_tx_halted").unwrap().as_bool().unwrap(),
+    };
+    info!("Constructred policy config for wallet {} with config: {:?}", config.wallet_name, config);
+    Ok(config)
 }
