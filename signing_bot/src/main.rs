@@ -12,7 +12,7 @@ use bdk::descriptor::Segwitv0;
 use bdk::keys::{DerivableKey, DescriptorKey, ExtendedKey};
 use bdk::keys::bip39::Mnemonic;
 use bdk::keys::DescriptorKey::Secret;
-use bdk::wallet::{AddressIndex, wallet_name_from_descriptor};
+use bdk::wallet::AddressIndex;
 use bdk::wallet::export::WalletExport;
 use lambda_http::{Body, handler, Request, RequestExt, Response, StrMap};
 use lambda_http::Body::Text;
@@ -69,10 +69,10 @@ async fn main() -> Result<(), lambda_runtime::Error> {
 }
 
 async fn handle_req(req: Request, _ctx: Context) -> Result<Response<Body>, Error> {
-    println!("Got request with path parameters: {:?}", req.path_parameters());
-    println!("Got request with uri {:?}", req.uri());
-    println!("Got request with path: {:?}", req.uri().path());
-    println!("Request body: {:?}", req.body());
+    info!("Got request with path parameters: {:?}", req.path_parameters());
+    info!("Got request with uri {:?}", req.uri());
+    info!("Got request with path: {:?}", req.uri().path());
+    info!("Request body: {:?}", req.body());
 
     let bucket = env::var("BUCKET").unwrap_or("seedbucket-1234567890".to_string());
     let derivation_path = env::var("DERIVATION_PATH").unwrap_or("m/48'/0'/0'/2'".to_string());
@@ -149,8 +149,6 @@ async fn sign_psbt(req: Request, bucket: &String, config: &Config, path_params: 
         }
     })?;
 
-    let secp = Secp256k1::new();
-    // let wallet_name = wallet_name_from_descriptor(&import.descriptor(), *&import.change_descriptor().as_ref(), Network::Bitcoin, &secp).unwrap();
     let policy_config = get_policy_config_from_ddb(&config, &key_name).await?;
     let policies = PolicySet::new(&wallet, &policy_config);
     return match policies.check_policies(&psbt) {
@@ -205,7 +203,7 @@ async fn create_new_wallet(req: &Request, bucket: &String, config: &Config, path
 
     let descriptor = dc.into_main_descriptor();
     let change = dc.into_change_descriptor();
-    println!("Assembled descriptor: {}", descriptor);
+    debug!("Assembled descriptor: {}", descriptor);
     let wallet = Wallet::new_offline(
         &descriptor,
         Some(&change),

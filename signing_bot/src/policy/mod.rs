@@ -6,7 +6,7 @@ use aws_sdk_dynamodb::model::AttributeValue;
 use bdk::bitcoin::util::psbt::PartiallySignedTransaction;
 use bdk::database::BatchDatabase;
 use bdk::Wallet;
-use log::{debug, info};
+use log::info;
 
 use crate::policy::andonpolicy::AndonPolicy;
 use crate::policy::valuepolicy::ValuePolicy;
@@ -70,6 +70,6 @@ pub async fn get_policy_config_from_ddb(aws_config: &Config, wallet_name: &str) 
         max_spend_per_tx: u64::from_str(item.get("max_spend_per_tx").unwrap_or(&AttributeValue::N("500000".to_string())).as_n().unwrap()).unwrap(),
         all_tx_halted: *item.get("all_tx_halted").unwrap().as_bool().unwrap(),
     };
-    info!("Constructred policy config for wallet {} with config: {:?}", config.wallet_name, config);
+    info!("Constructed policy config for wallet {} with config: {:?}", config.wallet_name, config);
     Ok(config)
 }

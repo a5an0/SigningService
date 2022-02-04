@@ -1,7 +1,7 @@
 use bdk::bitcoin::util::psbt::PartiallySignedTransaction;
 use bdk::database::BatchDatabase;
 use bdk::Wallet;
-use log::{info, warn};
+use log::{debug, info, warn};
 
 use crate::policy::{Policy, PolicyConfig};
 
@@ -26,8 +26,8 @@ impl<'a, B, D> Policy for ValuePolicy<'a, B, D>
     where D: BatchDatabase {
     fn check_transaction(&self, psbt: &PartiallySignedTransaction) -> Result<(), String> {
         let tx = psbt.to_owned().extract_tx();
-        info!("tx outputs: {:?}", tx.output);
-        info!("Filtered outputs: {:?}", tx.output.iter()
+        debug!("tx outputs: {:?}", tx.output);
+        debug!("Filtered outputs: {:?}", tx.output.iter()
             .filter(|txout| !self.wallet.is_mine(&txout.script_pubkey).unwrap()).collect::<Vec<_>>());
         let total_spend = tx.output.iter()
             .filter(|txout| !self.wallet.is_mine(&txout.script_pubkey).unwrap())
