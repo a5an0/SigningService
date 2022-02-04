@@ -1,4 +1,4 @@
-# SigningService (maybe we'll have a more clever name one day!)
+# SigningService
 
 ## What is this?
 
@@ -207,3 +207,4 @@ From the endpoint you get out of deploying the stack:
 - multi-step spend paths with network monitors/watchtowers to enforce policy (until we get convenents -- basically what
   Revault does)
 - proper (not the Shortcuts HACK) integration into Bluewallet or another wallet
+- more clever name. `SigningService` sucks
