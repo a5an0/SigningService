@@ -26,8 +26,17 @@ should be in some offline multisig setup).
 2. AndonPolicy - an "andon cord": if you trigger this policy (by setting a boolean to `true`) then all signings are
    rejected. This is a "big red button" to halt all spends in the case of theft/loss/attack.
 
-3. Right now, these policies have hardcoded values. The plan is to have their configuration stored in DDB, and then have
-   a UI (or something) to dial in the desired configuration.
+Policy configuration (what the limit on individual transaction spend is, or whether the andon cord has been pulled) is
+read out of a DDB table. If the configuration doesn't exist in DDB, a default configuration is used with:
+
+- a limit of 100,000 sats of (non-change) spend per transaction
+- andon cord is not enabled
+
+- You can find and change these defaults in `signing_bot/src/policy/mod.rs`.
+
+If you want to change these at runtime (or without hacking on the source), you need to create the right item in the DDB
+table. Right now this is completely manual. I'm planning on adding some kind of UI. In the worst case, you could totally
+do it with the `aws` command line tool.
 
 ## How to build/deploy
 
@@ -194,7 +203,7 @@ From the endpoint you get out of deploying the stack:
 - MFA (or some other mechanism) to override denials
 - Some easy-to-get-too mechanism to trigger the Andon Cord policy (send a text to a phone number, button on a website,
   iot button, etc)
-- Some UI (authenticated website?) to set policy parameters (spend threshold, blocked hours, address whitelist, etc)
+- Some UI (authenticated website?) to set policy configuration (spend threshold, blocked hours, address whitelist, etc)
 - multi-step spend paths with network monitors/watchtowers to enforce policy (until we get convenents -- basically what
   Revault does)
 - proper (not the Shortcuts HACK) integration into Bluewallet or another wallet

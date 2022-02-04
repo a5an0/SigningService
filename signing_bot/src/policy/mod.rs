@@ -54,6 +54,7 @@ impl<'a> PolicySet<'a> {
     }
 }
 
+/// Load policy configuration from DDB. If it can't find config in DDB, provide a default config
 pub async fn get_policy_config_from_ddb(aws_config: &Config, wallet_name: &str) -> Result<PolicyConfig, aws_sdk_dynamodb::Error> {
     let table_name = env::var("POLICY_CONFIG").unwrap();
     let ddb_client = aws_sdk_dynamodb::Client::new(aws_config);
@@ -62,14 +63,19 @@ pub async fn get_policy_config_from_ddb(aws_config: &Config, wallet_name: &str) 
         .key("wallet_name", AttributeValue::S(wallet_name.to_string()))
         .send()
         .await?;
-    let item = gio.item().unwrap();
 
+    let config = gio.item().map_or(
+        PolicyConfig {
+            wallet_name: wallet_name.to_string(),
+            max_spend_per_tx: 100_000,
+            all_tx_halted: false,
+        },
+        |item| PolicyConfig {
+            wallet_name: wallet_name.to_string(),
+            max_spend_per_tx: u64::from_str(item.get("max_spend_per_tx").unwrap_or(&AttributeValue::N("500000".to_string())).as_n().unwrap()).unwrap(),
+            all_tx_halted: *item.get("all_tx_halted").unwrap().as_bool().unwrap(),
+        });
 
-    let config = PolicyConfig {
-        wallet_name: wallet_name.to_string(),
-        max_spend_per_tx: u64::from_str(item.get("max_spend_per_tx").unwrap_or(&AttributeValue::N("500000".to_string())).as_n().unwrap()).unwrap(),
-        all_tx_halted: *item.get("all_tx_halted").unwrap().as_bool().unwrap(),
-    };
     info!("Constructed policy config for wallet {} with config: {:?}", config.wallet_name, config);
     Ok(config)
 }
